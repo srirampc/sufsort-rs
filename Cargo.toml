@@ -3,10 +3,13 @@
 name = "sufsort-rs"
 version = "0.1.0"
 build = "src/build.rs"
+authors = ["Sriram P C<sriram.pc@gmail.com>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
 
 [lib]
-  name = "sufsort_rs"
-  path = "src/lib.rs"
+name = "sufsort_rs"
+path = "src/lib.rs"
 
 [dependencies]
 libc = "0.1"
