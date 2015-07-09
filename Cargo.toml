@@ -6,6 +6,12 @@ build = "src/build.rs"
 authors = ["Sriram P C<sriram.pc@gmail.com>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
+keywords = ["libdivsufsort", "suffix array"]
+repository = "https://github.com/srirampc/sufsort-rs"
+homepage = "https://github.com/srirampc/sufsort-rs"
+description = """
+Bindings to libdivsufsort library.
+"""
 
 [lib]
 name = "sufsort_rs"
