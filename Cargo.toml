@@ -1,0 +1,12 @@
+[package]
+
+name = "sufsort-rs"
+version = "0.1.0"
+build = "src/build.rs"
+
+[lib]
+  name = "sufsort_rs"
+  path = "src/lib.rs"
+
+[dependencies]
+libc = "0.1"
