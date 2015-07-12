@@ -31,6 +31,8 @@ let bwt = s.construct_bwt();
 
 ### Pattern Search
 ```rust
+extern crate sufsort_rs;
+use self::sufsort_rs::SearchSA;
 let s = ("MISSISSIPPI").to_string();
 let sax: Vec<i32> = vec![10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2];
 let pat = ("IS").to_string();
