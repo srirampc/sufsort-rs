@@ -17,4 +17,5 @@ name = "sufsort_rs"
 path = "src/lib.rs"
 
 [dependencies]
-libc = "0.1"
+libc = "0.2"
+num = "0.2"
