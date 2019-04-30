@@ -1,7 +1,8 @@
 extern crate libc;
 extern crate num;
-use libc::{c_uchar, int32_t, int64_t};
 
+pub mod sufsort {
+use libc::{c_uchar, int32_t, int64_t};
 
 // Interface to raw functions from libdivsufsort
 extern{
@@ -49,6 +50,52 @@ extern{
 
 
 }
+
+    pub struct SA<T>{
+        pub sa: Vec<T>,
+    }
+
+    impl From<String> for SA<i32> {
+        /// Constructs Suffix Array for the given slice of u8 chars, src
+        ///
+        /// #Example
+        ///
+        /// ```
+        /// let s = "MISSISSIPPI".to_string();
+        /// let sax = SA::<i32>::from(s);
+        /// assert_eq!(sax.sa, &[10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2]);
+        /// ```
+        fn from(instr: String) -> Self{
+            unsafe {
+                let src = instr.as_bytes();
+                let mut dst : Vec<i32> = Vec::with_capacity(src.len() as usize);
+                divsufsort(src.as_ptr(), dst.as_mut_ptr(), src.len() as i32);
+                dst.set_len(src.len());
+                SA::<i32>{ sa: dst }
+            }
+        }
+    }
+
+    impl From<String> for SA<i64> {
+        /// Constructs Suffix Array for the given slice of u8 chars, src
+        ///
+        /// #Example
+        ///
+        /// ```
+        /// let s = "MISSISSIPPI".to_string();
+        /// let sax = SA::<i64>::from(s);
+        /// assert_eq!(sax.sa, &[10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2]);
+        /// ```
+        fn from(instr: String) -> Self{
+            unsafe {
+                let src = instr.as_bytes();
+                let mut dst : Vec<i64> = Vec::with_capacity(src.len() as usize);
+                divsufsort64(src.as_ptr(), dst.as_mut_ptr(), src.len() as i64);
+                dst.set_len(src.len());
+                SA::<i64>{ sa: dst }
+            }
+        }
+    }
 
 pub trait SuffixArray<T>{
     fn construct_sa(&self) -> Vec<T>;
@@ -327,4 +374,5 @@ pub fn simple_search_sa(src: &[u8], sa: &Vec<i32>, pc: char) -> (i32, i32){
 pub fn simple_search_sa_string(src: &String, sa: &Vec<i32>,
                                pc: char) -> (i32, i32){
     simple_search_sa(src.as_bytes(), sa, pc)
+}
 }

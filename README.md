@@ -1,3 +1,6 @@
+*** Interface is subject to a lot of experimentation, right now ***
+
+
 ## sufsort-rs
 
 libdivsufsort bindings for Rust.
