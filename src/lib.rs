@@ -205,7 +205,7 @@ pub mod sufsort {
 
         for t in sa {
             match (*t).to_usize() {
-                Some(x) => { 
+                Some(x) => {
                     // isa[(*t).to_usize().unwrap()] = i;
                     isa[x] = i.clone();
                     i = i + T::one();
@@ -229,11 +229,11 @@ pub mod sufsort {
             ///
             /// #Example
             ///
-            /// 
+            ///
             /// let src: Vec<u8> = vec![77, 73, 83, 83, 73, 83, 83, 73, 80, 80, 73];
             /// let btx = sufsort_rs::construct_bwt(&src);
             /// assert_eq!(btx, &[80, 83, 83, 77, 73, 80, 73, 83, 83, 73, 73]);
-            /// 
+            ///
             pub fn new(text: &'s String) -> Self {
             unsafe {
                 let mut dst: Vec<u8> = Vec::with_capacity(text.len());
@@ -266,11 +266,11 @@ pub mod sufsort {
         ///
         /// #Example
         ///
-        /// 
+        ///
         /// let src: Vec<u8> = vec![77, 73, 83, 83, 73, 83, 83, 73, 80, 80, 73];
         /// let btx = sufsort_rs::construct_bwt(&src);
         /// assert_eq!(btx, &[80, 83, 83, 77, 73, 80, 73, 83, 83, 73, 73]);
-        /// 
+        ///
         pub fn new(text: &'s String) -> Self{
             let mut dst: Vec<u8> = Vec::with_capacity(text.len());
             unsafe{
@@ -330,6 +330,114 @@ pub mod sufsort {
 
     pub fn inverse_bwt(){
         // TODO:: Need further design
+    }
+
+    pub fn construct_lcp_kasai<T>(text: &[u8], sa: &Vec<T>,
+                                  isa: &Vec<T>) -> Vec<T>
+        where T: std::clone::Clone + std::marker::Copy +
+                 std::ops::Add + std::ops::Sub<Output=T> +
+                 std::cmp::PartialEq +
+                 num::ToPrimitive + num::One + num::Zero {
+        let n = sa.len();
+        let mut lcp : Vec<T> = Vec::with_capacity(n);
+        for i in 0..n {
+            lcp.push(sa[i].clone());
+        }
+        let mut l : T = T::zero();
+        for i in 0..n {
+            let sa_1 = match isa[i].to_usize() {
+                Some(x) => x,
+                None => 0,
+            };
+
+            if sa_1 != 0 {
+                let mut jdx = sa_1 - 1;
+                let mut j : usize = match lcp[jdx].to_usize() {
+                        Some(x) => x,
+                        None => break,
+                    };
+                if l != T::zero() {
+                    l = l - T::one();
+                }
+                let mut ldx = match l.to_usize() {
+                        Some(x) => x,
+                        None => break,
+                    };;
+                while text[i+ldx] == text[j+ldx] {
+                    l = l + T::one();
+                    ldx = match l.to_usize()  {
+                        Some(x) => x,
+                        None => break,
+                    };
+                }
+                jdx = sa_1 - 1;
+                lcp[jdx] = l;
+            } else {
+                l = T::zero();
+                lcp[n-1] = T::zero();
+            }
+        }
+
+        for i in (n-1)..2 {
+            lcp[i-1] = lcp[i-2];
+        }
+
+        lcp[0] = T::zero();
+        lcp
+    }
+
+    pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
+        where T: std::clone::Clone + std::marker::Copy +
+                 std::ops::Add + std::ops::Sub<Output=T> +
+                 std::cmp::PartialEq +
+                 num::ToPrimitive + num::One + num::Zero {
+        let n = sa.len();
+        let mut lcp : Vec<T> = vec![T::zero(); n];
+        let mut plcp : Vec<T> = vec![T::zero(); n];
+        let mut sai_1 : T = T::zero();
+        // (1) Calculate PHI
+        for i in 0..n {
+            let sai = match sa[i].to_usize(){
+                Some(x) => x,
+                None => continue,
+            };
+            plcp[sai] = sai_1;
+            sai_1 = sa[i].clone();
+        }
+
+        // (2) Calculate Permuted LCP array.
+        let mut max_size : usize = 0;
+        let mut l : T = T::zero();
+        for i in 0..n-1 {
+            let mut phii = match plcp[i].to_usize() {
+                Some(x) => x,
+                None => continue,
+            };
+            let mut ldx = match l.to_usize(){
+                Some(x) => x,
+                None => continue,
+            };
+            while text[i+ldx] == text[phii+ldx]{
+                l = l + T::one();
+                ldx = match l.to_usize(){
+                    Some(x) => x,
+                    None => continue,
+                };
+            }
+            plcp[i] = T::zero() + l;
+            if l != T::zero() {
+                max_size = std::cmp::max(max_size, l.to_usize().unwrap());
+                l = l - T::one();
+            }
+        }
+        for i in 0..n {
+            let sai = match sa[i].to_usize(){
+                Some(x) => x,
+                None => continue,
+            };
+            lcp[i] = plcp[sai];
+        }
+        lcp
     }
 
 }
