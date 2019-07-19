@@ -23,7 +23,7 @@ pub fn find_min_element<T>(src:& [T], start: usize, end: usize) -> usize
 
 
 pub fn log2_usize(vxl: usize) -> usize {
-    const tab64 : [usize; 64] = [
+    const TAB64 : [usize; 64] = [
         63,  0, 58,  1, 59, 47, 53,  2,
         60, 39, 48, 27, 54, 33, 42,  3,
         61, 51, 37, 40, 49, 18, 28, 20,
@@ -41,7 +41,7 @@ pub fn log2_usize(vxl: usize) -> usize {
     value |= value >> 8;
     value |= value >> 16;
     value |= value >> 32;
-    tab64[((value - (value >> 1))*0x07EDD5E59A4E28C2usize) >> 58]
+    TAB64[((value - (value >> 1))*0x07EDD5E59A4E28C2usize) >> 58]
 }
 
 pub fn reference_ceil_log2(x: usize) -> usize {
@@ -131,10 +131,12 @@ impl<'s, T: 's> RMQ<'s, T> where
         let mut block_mins : Vec<Vec<u16>> = Vec::new();
         superblock_mins.push(vec![T::zero(); n_superblocks]);
         block_mins.push(vec![0; n_blocks]);
+        println!("{} {} {} sb {} b {}", n, Self::LOG_SB_SIZE, Self::LOG_B_SIZE, n_superblocks, n_blocks);
+        
+        // Iterator it = begin;
+        // while (it != end) {
         let mut it_idx: usize = 0;
         let it_end = n;
-       //  Iterator it = begin;
-       //  while (it != end) {
         while it_idx < it_end {
             // // find index of minimum block in superblock
             // Iterator min_pos = it;
@@ -158,13 +160,14 @@ impl<'s, T: 's> RMQ<'s, T> where
                 //     min_pos = block_min_pos;
                 // }
                 let block_min_pos : usize  = find_min_element(source, it_block, it_block_end);
-                if block_min_pos < it_block_end && source[block_min_pos] < source[min_pos]{
+                if block_min_pos < it_block_end && source[block_min_pos] < source[min_pos] {
                     min_pos = block_min_pos
                 }
                 // // save minimum for block min, relative to superblock start
                 // index_t block_min_idx = static_cast<index_t>(std::distance(it, block_min_pos));
                 // assert(block_min_idx < SUPERBLOCK_SIZE);
-                let block_min_idx : T = T::from_usize(block_min_pos).unwrap();
+                let block_min_idx : T = T::from_usize(block_min_pos - it_idx).unwrap();
+                assert!(block_min_idx < T::from_usize(Self::SUPERBLOCK_SIZE).unwrap());
                 
                 // block_mins[0][std::distance(begin, block_it) >> LOG_B_SIZE] = static_cast<uint16_t>(block_min_idx);
                 block_mins[0][it_block >> Self::LOG_B_SIZE] = block_min_idx.to_u16().unwrap();
@@ -173,7 +176,7 @@ impl<'s, T: 's> RMQ<'s, T> where
             // }
             }
             // superblock_mins[0][std::distance(begin, it) >> LOG_SB_SIZE] = static_cast<index_t>(std::distance(begin, min_pos));
-            let sbmin_idx = it_idx >> Self::LOG_B_SIZE;
+            let sbmin_idx = it_idx >> Self::LOG_SB_SIZE;
             superblock_mins[0][sbmin_idx] =  T::from_usize(min_pos).unwrap();
             // it = sb_end_it;
             it_idx = it_sb_end;
@@ -196,7 +199,7 @@ impl<'s, T: 's> RMQ<'s, T> where
                 let right_idx: usize = std::cmp::min(idx + dist/2, n_superblocks - dist/4 - 1);
                 // if (*(begin + superblock_mins[level-1][right_idx]) < *(begin + superblock_mins[level-1][i])) {
                 if source[superblock_mins[level-1][right_idx].to_usize().unwrap()] < 
-                    source[superblock_mins[level-1][right_idx].to_usize().unwrap()] {
+                    source[superblock_mins[level-1][idx].to_usize().unwrap()] {
                     // assert(i < superblock_mins.back().size());
                     assert!(idx < superblock_mins.last().unwrap().len());
                     // assert(superblock_mins.size() == level+1);

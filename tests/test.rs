@@ -85,7 +85,9 @@ mod tests {
                     // ASSERT_EQ(*minel_pos, 
                     //   *(this->_begin + this->superblock_mins[d][i])) <<
                     // "Superblock min is wrong for indeces: [d],[i]=" << d << "," << i;
-                    assert_eq!(self.src[minel_pos], self.src[self.r.superblock_mins[d][i].to_usize().unwrap()]);
+                    let sbmx = self.r.superblock_mins[d][i].to_usize().unwrap();
+                    assert_eq!(self.src[minel_pos], self.src[sbmx],
+                               "Superblock min is wrong for indeces: [d],[i]={} {} {} {} {} {}", d , i, sdx, edx, minel_pos, sbmx);
 
                 // }
                 }
@@ -117,12 +119,13 @@ mod tests {
                     //     std::min(this->_begin + (block_idx+dist)*base_class::BLOCK_SIZE, 
                     //              std::min(this->_begin+sb_end,this->_end)));
                     let sdx = block_idx * RMQ::<T>::BLOCK_SIZE;
-                    let edx = std::cmp::min((block_idx + dist)* RMQ::<T>::BLOCK_SIZE, 
+                    let edx = std::cmp::min((block_idx + dist) * RMQ::<T>::BLOCK_SIZE, 
                                             std::cmp::min(sb_end, self.src.len()));
                     let minel_pos = find_min_element(self.src, sdx, edx);
                     // //index_t minel_idx = minel_pos - this->_begin;
                     // //index_t rmq_idx = base_class::SUPERBLOCK_SIZE*n_sb + this->block_mins[d][i];
                     // ASSERT_EQ(*minel_pos, *(this->_begin + base_class::SUPERBLOCK_SIZE*n_sb + this->block_mins[d][i]));
+                    assert!(minel_pos < self.src.len());
                     assert_eq!(self.src[minel_pos], self.src[RMQ::<T>::SUPERBLOCK_SIZE*n_sb + (self.r.block_mins[d][i] as usize)]);
                 // }
                 }
@@ -145,7 +148,7 @@ mod tests {
                 for j in i+1..n {
                     // if (*(this->_begin+j) < min)
                     //     min = *(this->_begin+j);
-                    if(self.src[j] < minx){
+                    if self.src[j] < minx {
                         minx = self.src[j]
                     }
                     // ASSERT_EQ(min, *this->query(this->_begin+i, this->_begin+j+1)) 
@@ -164,11 +167,10 @@ mod tests {
     #[test]
     fn test_rmq1(){
         let mut rng = rand::thread_rng();
-        
+
         // for (size_t size : {1, 13, 32, 64, 127, 233}) {
         for n in &[1, 13, 32, 64, 127, 233] {
             // std::vector<int> vec(size);
-            
             // std::generate(vec.begin(), vec.end(), [](){return std::rand() % 10;});
             let mut numbers = Vec::<i64>::with_capacity(*n as usize);
             for _ in 0..(*n as usize) {
@@ -178,28 +180,36 @@ mod tests {
             // rmq_tester<std::vector<int>::iterator> r(vec.begin(), vec.end());
             let r : RmqTester<i64> = RmqTester::<i64>::new(&numbers);
 
-            // // check correctness
-            // r.check_block_correctness();
-            assert!(r.check_block_correctness(), true);
-            assert!(r.check_superblock_correctness(), true);
-            assert!(r.check_all_subranges(), true);
+            // // // check correctness
+            r.check_block_correctness();
+            r.check_superblock_correctness();
+            r.check_all_subranges();
         // }
         }
     }
     
     #[test]
     fn test_rmq2(){
-    // for (size_t size : {123, 73, 88, 1025}) {
-    //     std::vector<int> vec(size);
-    //     std::generate(vec.begin(), vec.end(), [](){return 50 - std::rand() % 100;});
-    //     // construct rmq
-    //     rmq_tester<std::vector<int>::iterator> r(vec.begin(), vec.end());
+        let mut rng = rand::thread_rng();
+        // for (size_t size : {123, 73, 88, 1025}) {
+        for n in &[123, 73, 88, 1025] {
+            // std::vector<int> vec(size);
+            // std::generate(vec.begin(), vec.end(), [](){return 50 - std::rand() % 100;});
+            let mut numbers = Vec::<i64>::with_capacity(*n as usize);
+            for _ in 0..(*n as usize) {
+                numbers.push(rng.gen::<i64>());
+            }
 
-    //     // check correctness
-    //     r.check_block_correctness();
-    //     r.check_superblock_correctness();
-    //     r.check_all_subranges();
-    // }
+            // // construct rmq
+            // rmq_tester<std::vector<int>::iterator> r(vec.begin(), vec.end());
+            let r : RmqTester<i64> = RmqTester::<i64>::new(&numbers);
+
+            // // check correctness
+            r.check_block_correctness();
+            r.check_superblock_correctness();
+            // r.check_all_subranges();
+        // }
+        }
     }
 
     #[test]
@@ -220,37 +230,52 @@ mod tests {
     #[test]
     fn test_rmq_big(){
         // std::vector<size_t> vec(1235);
+        let n = 1235;
+        let mut rng = rand::thread_rng();
         // std::generate(vec.begin(), vec.end(), [](){return std::rand() % 1000;});
+        let mut numbers = Vec::<usize>::with_capacity(n as usize);
+        for _ in 0..(n as usize) {
+            numbers.push(rng.gen::<usize>());
+        }
         // // construct rmq
         // rmq_tester<std::vector<size_t>::iterator> r(vec.begin(), vec.end());
+        let r : RmqTester<usize> = RmqTester::<usize>::new(&numbers);
         // // check all queries
+        r.check_block_correctness();
+        r.check_superblock_correctness();
         // r.check_all_subranges();
     }
 
     #[test]
     fn test_rmq_multimin(){
+        let n = 1235;
+        let mut rng = rand::thread_rng();
+        // std::vector<size_t> vec(1000);
+        // std::generate(vec.begin(), vec.end(), [](){return (8 + std::rand() % 10)/10;});
+        // rmq<std::vector<size_t>::const_iterator> minquery(vec.cbegin(), vec.cend());
+        let mut numbers = Vec::<usize>::with_capacity(n as usize);
+        for _ in 0..(n as usize) {
+            numbers.push(rng.gen::<usize>());
+        }
+        let r: RMQ<usize> = RMQ::<usize>::new(&numbers);
 
-    // std::vector<size_t> vec(1000);
-    // std::generate(vec.begin(), vec.end(), [](){return (8 + std::rand() % 10)/10;});
-    // rmq<std::vector<size_t>::const_iterator> minquery(vec.cbegin(), vec.cend());
-
-    // // check whether the min is the first min in the range
-    // // TODO: test for all partial ranges
-    // auto begin = vec.cbegin();
-    // auto min_it = minquery.query(vec.cbegin(), vec.cend());
-    // while (*min_it == 0) {
-    //     if (min_it - begin > 0) {
-    //         // assert the minimum of the range prior to the found min is larger
-    //         auto min_it2 = minquery.query(begin, min_it);
-    //         EXPECT_LT(*min_it, *min_it2) << " min for range [" << (begin-vec.cbegin()) << ",end] at pos " << (min_it - vec.cbegin()) << ", but there is a previous min of same value at pos " << (min_it2 - vec.cbegin());
-    //     }
-    //     // continue in remaining range:
-    //     begin = min_it+1;
-    //     if (begin == vec.cend())
-    //         break;
-    //     min_it = minquery.query(begin, vec.cend());
-    // }
-    // //std::cout << min_it - vec.cbegin() << std::endl;
+        // // check whether the min is the first min in the range
+        // // TODO: test for all partial ranges
+        // auto begin = vec.cbegin();
+        // auto min_it = minquery.query(vec.cbegin(), vec.cend());
+        // while (*min_it == 0) {
+        //     if (min_it - begin > 0) {
+        //         // assert the minimum of the range prior to the found min is larger
+        //         auto min_it2 = minquery.query(begin, min_it);
+        //         EXPECT_LT(*min_it, *min_it2) << " min for range [" << (begin-vec.cbegin()) << ",end] at pos " << (min_it - vec.cbegin()) << ", but there is a previous min of same value at pos " << (min_it2 - vec.cbegin());
+        //     }
+        //     // continue in remaining range:
+        //     begin = min_it+1;
+        //     if (begin == vec.cend())
+        //         break;
+        //     min_it = minquery.query(begin, vec.cend());
+        // }
+        // //std::cout << min_it - vec.cbegin() << std::endl;
     }
 
 }
