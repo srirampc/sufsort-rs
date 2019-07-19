@@ -6,6 +6,8 @@ pub fn construct_lcp_kasai<T>(text: &[u8], sa: &Vec<T>,
                 std::cmp::PartialEq +
                 num::ToPrimitive + num::One + num::Zero {
     let n = sa.len();
+    assert!(n == text.len());
+    assert!(n == isa.len());
     let mut lcp : Vec<T> = Vec::with_capacity(n);
     for i in 0..n {
         lcp.push(sa[i].clone());
@@ -59,6 +61,7 @@ pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
                 std::cmp::PartialEq +
                 num::ToPrimitive + num::One + num::Zero {
     let n = sa.len();
+    assert!(n == text.len());
     let mut lcp : Vec<T> = vec![T::zero(); n];
     let mut plcp : Vec<T> = vec![T::zero(); n];
     let mut sai_1 : T = T::zero();
@@ -107,37 +110,48 @@ pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
     lcp
 }
 
-// TODO: port the following from patflick/psac
-// template <typename index_t>
-// void lcp_from_sa(const std::string& S, const std::vector<index_t>& SA, const std::vector<index_t>& ISA, std::vector<index_t>& LCP) {
-//     // TODO: cite the source for this linear O(n) algorithm!
+pub fn construct_lcp_from_sa<T>(text: &[u8], sa: &Vec<T>, isa: &Vec<T>) -> Vec<T>
+    where T: std::clone::Clone + std::marker::Copy +
+                std::ops::Add +
+                std::cmp::PartialEq + std::cmp::PartialOrd +
+                num::FromPrimitive + num::ToPrimitive +
+                num::One + num::Zero {
+    let n = text.len();
+    assert!(n == sa.len());
+    assert!(n == isa.len());
+    let mut lcp : Vec<T> = vec![T::zero(); n];
+    lcp[0] = T::zero();
+    let mut h: usize = 0;
+    for i in 0..n-1 {
+        let mut k: usize = 0;
+        if h > 0 {
+            k = h - 1;
+        }
 
-//     // input sizes must be equal
-//     assert(S.size() == SA.size());
-//     assert(SA.size() == ISA.size());
+        // comparing suffix starting from i=SA[ISA[i]] with the previous
+        // suffix in SA order: SA[ISA[i]-1]
+        let isdx = match isa[i].to_usize() {
+            Some(x) => x,
+            None => continue,
+        };
+        let sdx = match sa[isdx-1].to_usize() {
+            Some(x) => x + k,
+            None => continue,
+        };
+        while (i+k < text.len()) && (isa[i] > T::zero()) && 
+              (sdx < text.len()) && (text[i] == text[sdx]) {
+            k = k + 1;
+        }
+        let ldx = match isa[i].to_usize(){
+            Some(x) => x,
+            None => continue,
+        };
+        lcp[ldx] = match T::from_usize(k){
+            Some(x) => x,
+            None => continue,
+        };
+        h = k;
+    }
+    lcp
+}
 
-//     // init LCP array if not yet of correct size
-//     if (LCP.size() != S.size()) {
-//         LCP.resize(S.size());
-//     }
-
-//     // first LCP is undefined -> set to 0:
-//     LCP[0] = 0;
-
-//     std::size_t h = 0;
-
-//     // in string order!
-//     for (std::size_t i = 0; i < S.size(); ++i) {
-//         // length of currently equal characters (in string order, next LCP value
-//         // is always >= current lcp - 1)
-//         std::size_t k = 0;
-//         if (h > 0)
-//             k = h-1;
-//         // comparing suffix starting from i=SA[ISA[i]] with the previous
-//         // suffix in SA order: SA[ISA[i]-1]
-//         while (i+k < S.size() && ISA[i] > 0 && SA[ISA[i]-1]+k < S.size() && S[i+k] == S[SA[ISA[i]-1]+k])
-//             k++;
-//         LCP[ISA[i]] = k;
-//         h = k;
-//     }
-// }

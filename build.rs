@@ -1,17 +1,17 @@
 //extern crate pkg_config;
 
 use std::env;
-use std::fs::{self, File};
+use std::fs::{self};
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
-macro_rules! t {
-    ($e:expr) => (match $e {
-        Ok(n) => n,
-        Err(e) => fail(&format!("\n{} failed with {}\n", stringify!($e), e)),
-    })
-}
+// macro_rules! t {
+//     ($e:expr) => (match $e {
+//         Ok(n) => n,
+//         Err(e) => fail(&format!("\n{} failed with {}\n", stringify!($e), e)),
+//     })
+// }
 
 fn fail(s: &str) -> ! {
     panic!("\n{}\n\nbuild script failed, must exit now", s)
@@ -49,5 +49,9 @@ fn main() {
     println!("cargo:root={}", dst.display());
     println!("cargo:rustc-flags=-l static=divsufsort");
     println!("cargo:rustc-flags=-l static=divsufsort64");
-    println!("cargo:rustc-flags=-L {}", dst.join("build").join("lib").display());
+    if cfg!(windows) {
+        println!("cargo:rustc-flags=-L {}", dst.join("build").join("lib").join("Debug").display());
+    } else {
+        println!("cargo:rustc-flags=-L {}", dst.join("build").join("lib").display());
+    }
 }
