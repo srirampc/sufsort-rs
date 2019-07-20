@@ -112,46 +112,54 @@ pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
 
 pub fn construct_lcp_from_sa<T>(text: &[u8], sa: &Vec<T>, isa: &Vec<T>) -> Vec<T>
     where T: std::clone::Clone + std::marker::Copy +
-                std::ops::Add +
-                std::cmp::PartialEq + std::cmp::PartialOrd +
-                num::FromPrimitive + num::ToPrimitive +
-                num::One + num::Zero {
+             num::FromPrimitive + num::ToPrimitive + num::Zero {
     let n = text.len();
     assert!(n == sa.len());
     assert!(n == isa.len());
     let mut lcp : Vec<T> = vec![T::zero(); n];
+    // first LCP is undefined -> set to 0:
+    // LCP[0] = 0;
     lcp[0] = T::zero();
+    // std::size_t h = 0;
     let mut h: usize = 0;
+
+    // // in string order!
+    // for (std::size_t i = 0; i < S.size(); ++i) {
     for i in 0..n-1 {
+        // length of currently equal characters (in string order, next LCP value
+        // is always >= current lcp - 1)
+        // std::size_t k = 0;
         let mut k: usize = 0;
+
+        // if (h > 0)
+        //     k = h-1;
         if h > 0 {
             k = h - 1;
         }
 
         // comparing suffix starting from i=SA[ISA[i]] with the previous
         // suffix in SA order: SA[ISA[i]-1]
-        let isdx = match isa[i].to_usize() {
-            Some(x) => x,
-            None => continue,
-        };
-        let sdx = match sa[isdx-1].to_usize() {
-            Some(x) => x + k,
-            None => continue,
-        };
-        while (i+k < text.len()) && (isa[i] > T::zero()) && 
-              (sdx < text.len()) && (text[i] == text[sdx]) {
-            k = k + 1;
+        let isadx = isa[i].to_usize().unwrap();
+        // while (i+k < S.size() && ISA[i] > 0 &&
+        //        SA[ISA[i]-1]+k < S.size() && S[i+k] == S[SA[ISA[i]-1]+k])
+        //         k++;
+        if isadx > 0 {
+            let sadx =  sa[isadx - 1].to_usize().unwrap();
+            while (i+k < text.len()) && 
+                    (sadx+k < text.len()) &&
+                    (text[i+k] == text[sadx+k]) {
+                k = k + 1;
+            }
         }
-        let ldx = match isa[i].to_usize(){
+        // LCP[ISA[i]] = k;
+        lcp[isadx] = match T::from_usize(k){
             Some(x) => x,
             None => continue,
         };
-        lcp[ldx] = match T::from_usize(k){
-            Some(x) => x,
-            None => continue,
-        };
+        // h = k;
         h = k;
     }
+    // }
     lcp
 }
 
