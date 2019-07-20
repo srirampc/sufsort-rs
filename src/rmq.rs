@@ -77,11 +77,13 @@ pub fn ceil_log2(n: usize) -> usize {
 
 
 
-pub struct RMQ<'s, T> where 
-    T: std::clone::Clone + std::marker::Copy + std::ops::Add + std::cmp::Ord +
-        num::FromPrimitive + num::ToPrimitive + num::One + num::Zero {
+pub struct RMQ<'s, ST, IT> where 
+    ST: std::cmp::Ord + std::fmt::Debug,
+    IT: std::marker::Copy +
+        num::Integer + num::Unsigned + num::FromPrimitive + num::ToPrimitive +
+        std::fmt::Debug {
 
-    pub src:&'s [T],
+    pub src:&'s [ST],
 
     pub n: usize,
 
@@ -91,7 +93,7 @@ pub struct RMQ<'s, T> where
 
     // saves minimum as block index for combination of superblocks
     // relative to global start index
-    pub superblock_mins: Vec<Vec<T>>,
+    pub superblock_mins: Vec<Vec<IT>>,
 
     // saves minimum for combination of blocks relative to superblock
     // start index
@@ -100,17 +102,18 @@ pub struct RMQ<'s, T> where
 }
 
 
-impl<'s, T: 's> RMQ<'s, T> where
-    T: std::clone::Clone + std::marker::Copy + std::ops::Add + std::cmp::Ord +
-        num::FromPrimitive + num::ToPrimitive + num::One + num::Zero {
-
+impl<'s, ST: 's, IT> RMQ<'s, ST, IT> where
+    ST: std::cmp::Ord + std::fmt::Debug,
+    IT: std::marker::Copy +
+        num::Integer + num::Unsigned + num::FromPrimitive + num::ToPrimitive +
+        std::fmt::Debug  {
     // superblock size is log^(2+epsilon)(n)
     // we choose it as bitsize^2:
     //  - 64 bits -> 4096
     //  - 32 bits -> 1024
     //  - both bound by 2^16 -> uint16_t
     //  block size: one cache line
-    pub const MEM_SIZE_OF: usize = std::mem::size_of::<T>();
+    pub const MEM_SIZE_OF: usize = std::mem::size_of::<IT>();
     pub const BLOCK_SIZE: usize = 64/Self::MEM_SIZE_OF;
     pub const SUPERBLOCK_SIZE: usize = 64/std::mem::size_of::<u16>() * 64/Self::MEM_SIZE_OF;
     pub const NB_PER_SB: usize = Self::SUPERBLOCK_SIZE / Self::BLOCK_SIZE;
@@ -123,8 +126,10 @@ impl<'s, T: 's> RMQ<'s, T> where
     pub const LOG_SB_SIZE : usize = 12 - Self::LOG_IDXT - 1;
     pub const LOG_NB_PER_SB : usize = Self::LOG_SB_SIZE - Self::LOG_B_SIZE;
 
-    pub fn new(source: &'s [T]) -> RMQ<'s, T> {
-        assert!(Self::MEM_SIZE_OF == 8 || Self::MEM_SIZE_OF ==4);
+    pub fn new(source: &'s [ST]) -> RMQ<'s, ST, IT> {
+        // Currently only 8-bit indices work.
+        assert!(Self::MEM_SIZE_OF == 8); // || Self::MEM_SIZE_OF ==4);
+
         let n = source.len();
         // // get number of blocks
         // n_superblocks = ((n-1) >> LOG_SB_SIZE) + 1;
@@ -134,11 +139,10 @@ impl<'s, T: 's> RMQ<'s, T> where
 
         // superblock_mins.push_back(std::vector<index_t>(n_superblocks));
         // block_mins.push_back(std::vector<uint16_t>(n_blocks));
-        let mut superblock_mins : Vec<Vec<T>> = Vec::new(); // = Vec::with_capacity(n_superblocks);
+        let mut superblock_mins : Vec<Vec<IT>> = Vec::new(); // = Vec::with_capacity(n_superblocks);
         let mut block_mins : Vec<Vec<u16>> = Vec::new();
-        superblock_mins.push(vec![T::zero(); n_superblocks]);
+        superblock_mins.push(vec![IT::zero(); n_superblocks]);
         block_mins.push(vec![0; n_blocks]);
-        println!("sb {} b {}", n_superblocks, n_blocks);
         
         // Iterator it = begin;
         // while (it != end) {
@@ -173,8 +177,8 @@ impl<'s, T: 's> RMQ<'s, T> where
                 // // save minimum for block min, relative to superblock start
                 // index_t block_min_idx = static_cast<index_t>(std::distance(it, block_min_pos));
                 // assert(block_min_idx < SUPERBLOCK_SIZE);
-                let block_min_idx : T = T::from_usize(block_min_pos - it_idx).unwrap();
-                assert!(block_min_idx < T::from_usize(Self::SUPERBLOCK_SIZE).unwrap());
+                let block_min_idx : IT = IT::from_usize(block_min_pos - it_idx).unwrap();
+                assert!(block_min_idx < IT::from_usize(Self::SUPERBLOCK_SIZE).unwrap());
                 
                 // block_mins[0][std::distance(begin, block_it) >> LOG_B_SIZE] = static_cast<uint16_t>(block_min_idx);
                 block_mins[0][it_block >> Self::LOG_B_SIZE] = block_min_idx.to_u16().unwrap();
@@ -184,7 +188,7 @@ impl<'s, T: 's> RMQ<'s, T> where
             }
             // superblock_mins[0][std::distance(begin, it) >> LOG_SB_SIZE] = static_cast<index_t>(std::distance(begin, min_pos));
             let sbmin_idx = it_idx >> Self::LOG_SB_SIZE;
-            superblock_mins[0][sbmin_idx] =  T::from_usize(min_pos).unwrap();
+            superblock_mins[0][sbmin_idx] =  IT::from_usize(min_pos).unwrap();
             // it = sb_end_it;
             it_idx = it_sb_end;
         // }
@@ -198,7 +202,7 @@ impl<'s, T: 's> RMQ<'s, T> where
         let mut dist: usize = 2;
         while dist/2 < n_superblocks {
             // superblock_mins.push_back(std::vector<index_t>(n_superblocks - dist/2));
-            superblock_mins.push(vec![T::zero(); n_superblocks - dist/2]);
+            superblock_mins.push(vec![IT::zero(); n_superblocks - dist/2]);
             // for (index_t i = 0; i+dist/2 < n_superblocks; ++i) {
             let mut idx = 0;
             while idx + (dist/2) < n_superblocks {
@@ -295,7 +299,7 @@ impl<'s, T: 's> RMQ<'s, T> where
         // }
         }
 
-        RMQ::<'s, T>{
+        RMQ::<'s, ST, IT>{
             src: source, n: n,
             n_blocks: n_blocks,
             n_superblocks: n_superblocks,
