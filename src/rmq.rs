@@ -44,7 +44,7 @@ pub fn log2_usize(vxl: usize) -> usize {
     TAB64[((value - (value >> 1))*0x07EDD5E59A4E28C2usize) >> 58]
 }
 
-pub fn reference_ceil_log2(x: usize) -> usize {
+pub fn ref_floor_log2(x: usize) -> usize {
     let mut log_floor: usize = 0;
     let mut n: usize = x;
     // for (;n != 0; n >>= 1)
@@ -53,6 +53,11 @@ pub fn reference_ceil_log2(x: usize) -> usize {
         n >>= 1;
     }
     log_floor -= 1;
+    log_floor
+}
+
+pub fn ref_ceil_log2(x: usize) -> usize {
+    let log_floor: usize = ref_floor_log2(x);
     // add one if not power of 2
     log_floor + if (x&(x-1)) != 0 { 1 } else { 0 }
 }
@@ -105,19 +110,21 @@ impl<'s, T: 's> RMQ<'s, T> where
     //  - 32 bits -> 1024
     //  - both bound by 2^16 -> uint16_t
     //  block size: one cache line
-    pub const BLOCK_SIZE: usize = 64/std::mem::size_of::<T>();
-    pub const SUPERBLOCK_SIZE: usize = 64/std::mem::size_of::<u16>() * 64/std::mem::size_of::<T>();
+    pub const MEM_SIZE_OF: usize = std::mem::size_of::<T>();
+    pub const BLOCK_SIZE: usize = 64/Self::MEM_SIZE_OF;
+    pub const SUPERBLOCK_SIZE: usize = 64/std::mem::size_of::<u16>() * 64/Self::MEM_SIZE_OF;
     pub const NB_PER_SB: usize = Self::SUPERBLOCK_SIZE / Self::BLOCK_SIZE;
 
     // static_assert(sizeof(index_t) == 8 || sizeof(index_t) == 4,
     // "TODO: RMQ implemented only for sizeof(index_t) = 8 or 4");
-    pub const LOG_IDXT : usize = 3; // TODO: fix this
+    pub const LOG_IDXT : usize = (((Self::MEM_SIZE_OF & 8) >> 3) * 3) + (((Self::MEM_SIZE_OF & 4) >> 2) * 4);
     // if std::mem::size_of::<T>() == 8 { 3 } else { 4};
     pub const LOG_B_SIZE : usize = 6 - Self::LOG_IDXT;
     pub const LOG_SB_SIZE : usize = 12 - Self::LOG_IDXT - 1;
     pub const LOG_NB_PER_SB : usize = Self::LOG_SB_SIZE - Self::LOG_B_SIZE;
 
     pub fn new(source: &'s [T]) -> RMQ<'s, T> {
+        assert!(Self::MEM_SIZE_OF == 8 || Self::MEM_SIZE_OF ==4);
         let n = source.len();
         // // get number of blocks
         // n_superblocks = ((n-1) >> LOG_SB_SIZE) + 1;
@@ -131,7 +138,7 @@ impl<'s, T: 's> RMQ<'s, T> where
         let mut block_mins : Vec<Vec<u16>> = Vec::new();
         superblock_mins.push(vec![T::zero(); n_superblocks]);
         block_mins.push(vec![0; n_blocks]);
-        println!("{} {} {} sb {} b {}", n, Self::LOG_SB_SIZE, Self::LOG_B_SIZE, n_superblocks, n_blocks);
+        println!("sb {} b {}", n_superblocks, n_blocks);
         
         // Iterator it = begin;
         // while (it != end) {
@@ -298,11 +305,6 @@ impl<'s, T: 's> RMQ<'s, T> where
     }
 
 
-//     /**
-//      * @brief Query the inclusive query range [l,r]
-//      *
-//      * @return The index of the minimum item in the range [l,r]
-//      */
 //     size_t operator()(const size_t l, const size_t r) const {
        pub fn query(&self, l: usize, r: usize) -> usize {
         // const size_t begin_idx = l;
@@ -339,8 +341,7 @@ impl<'s, T: 's> RMQ<'s, T> where
             // index_t n_sb = right_sb - left_sb;
             let n_sb = right_sb - left_sb;
             // unsigned int dist = floorlog2(n_sb);
-            let dist = log2_usize(n_sb);
-
+            let dist = ref_floor_log2(n_sb);
 
             // assert(dist < superblock_mins.size() && left_sb < superblock_mins[dist].size());
             assert!(dist < self.superblock_mins.len() && left_sb < self.superblock_mins[dist].len());
@@ -373,7 +374,7 @@ impl<'s, T: 's> RMQ<'s, T> where
             // if (n_b > 0) {
             if n_b > 0 {
                 // unsigned int level = ceillog2(n_b);
-                let level = ceil_log2(n_b);
+                let level = ref_ceil_log2(n_b);
                 // index_t sb_offset = (left_sb-1)*(NB_PER_SB - (1<<level)/2);
                 let sb_offset = (left_sb-1)*(Self::NB_PER_SB - (1<<level)/2);
                 // Iterator block_min_it = _begin + block_mins[level][left_b + sb_offset] + ((left_sb-1)<<LOG_SB_SIZE);
@@ -381,7 +382,7 @@ impl<'s, T: 's> RMQ<'s, T> where
                 // // return this new min if its the same or smaller
                 // if (!(*min_pos < *block_min_it))
                 //     min_pos = block_min_it;
-                if self.src[min_pos] < self.src[block_min_it] {
+                if !(self.src[min_pos] < self.src[block_min_it]) {
                     min_pos = block_min_it
                 }
             // }
@@ -394,15 +395,15 @@ impl<'s, T: 's> RMQ<'s, T> where
                 // Iterator inblock_min_it = std::min_element(_begin + begin_idx, _begin + left_b_gidx);
                 let inblock_min_t = find_min_element(self.src, begin_idx, left_b_gidx);
                 // if (!(*min_pos < *inblock_min_it)) {
-                if self.src[min_pos] < self.src[inblock_min_t] {
                 //     min_pos = inblock_min_it;
-                    min_pos = inblock_min_t;
                 // }
+                if !(self.src[min_pos] < self.src[inblock_min_t]) {
+                    min_pos = inblock_min_t;
                 }
             // }
             }
         // }
-       }
+        }
 
         // // go to right -> blocks -> sub-block
         // if (left_sb <= right_sb && right_sb != n_superblocks && end_idx != (right_sb << LOG_SB_SIZE)) {
@@ -416,21 +417,21 @@ impl<'s, T: 's> RMQ<'s, T> where
             // if (n_b > 0) {
             if n_b > 0 {
                 // unsigned int dist = floorlog2(n_b);
-                let dist = floor_log2(n_b);
+                let dist = ref_floor_log2(n_b);
                 // index_t sb_offset = right_sb*((1<<dist)/2);
                 let sb_offset = right_sb*((1<<dist)/2);
                 // Iterator block_min_it = _begin + block_mins[dist][left_b - sb_offset] + ((right_sb) << LOG_SB_SIZE);
                 let mut block_min_it = self.block_mins[dist][left_b - sb_offset] as usize + ((right_sb) << Self::LOG_SB_SIZE);
                 // if (*block_min_it < *min_pos)
                 //     min_pos = block_min_it;
-                if self.src[block_min_it] < self.src[min_pos]{
+                if self.src[block_min_it] < self.src[min_pos] {
                     min_pos = block_min_it
                 }
                 // block_min_it = _begin + block_mins[dist][right_b - sb_offset - (1<<dist)] + ((right_sb) << LOG_SB_SIZE);
                 block_min_it = self.block_mins[dist][right_b - sb_offset - (1<<dist)] as usize + ((right_sb) << Self::LOG_SB_SIZE);
                 // if (*block_min_it < *min_pos)
                 //     min_pos = block_min_it;
-                if self.src[block_min_it] < self.src[min_pos]{
+                if self.src[block_min_it] < self.src[min_pos] {
                     min_pos = block_min_it;
                 }
             // }
@@ -454,7 +455,6 @@ impl<'s, T: 's> RMQ<'s, T> where
             }
         // }
         }
-
         // if there are no superblocks covered (both indeces in same superblock)
         // if (left_sb > right_sb) {
         if left_sb > right_sb {
@@ -462,7 +462,7 @@ impl<'s, T: 's> RMQ<'s, T> where
             let mut left_b = ((begin_idx - 1) >> Self::LOG_B_SIZE) + 1;
             // if (begin_idx == 0)
             //     left_b = 0;
-            if begin_idx == 0 { left_b = 0};
+            if begin_idx == 0 {left_b = 0;}
             // index_t right_b = end_idx >> LOG_B_SIZE;
             let right_b = end_idx >> Self::LOG_B_SIZE;
 
@@ -479,7 +479,7 @@ impl<'s, T: 's> RMQ<'s, T> where
                 assert!(left_b >> Self::LOG_NB_PER_SB == right_b >> Self::LOG_NB_PER_SB);
 
                 // unsigned int dist = floorlog2(right_b - left_b);
-                let dist = floor_log2(right_b - left_b);
+                let dist = ref_floor_log2(right_b - left_b);
                 // index_t sb_offset = 0;
                 let mut sb_offset = 0;
                 // index_t sb_size_offset = 0;
@@ -503,8 +503,6 @@ impl<'s, T: 's> RMQ<'s, T> where
                 // if (*block_min_it < *min_pos)
                 //     min_pos = block_min_it;
                 block_min_it = self.block_mins[dist][right_b - sb_offset - (1<<dist)] as usize + sb_size_offset;
-                // if (*block_min_it < *min_pos)
-                //     min_pos = block_min_it;
                 if self.src[block_min_it] < self.src[min_pos] {
                     min_pos = block_min_it;
                 }
