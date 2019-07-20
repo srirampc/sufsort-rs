@@ -256,11 +256,13 @@ mod tests {
             let r : RmqTester<i64, usize> = RmqTester::<i64, usize>::new(&numbers);
 
             // // check correctness
-            r.check_block_correctness();
+            r.check_block_correctness();    
             r.check_superblock_correctness();
-            r.check_sub_range(1, 254);
-            r.check_sub_range(257, 500);
-            r.check_sub_range(100, 300);
+            if *n > 500 {
+                r.check_sub_range(1, 254);
+                r.check_sub_range(257, 500);
+                r.check_sub_range(100, 300);
+            }
             r.check_all_subranges();
         // }
         }
@@ -293,11 +295,11 @@ mod tests {
     #[test]
     fn test_rmq_big(){
         // std::vector<size_t> vec(1235);
-        let n = 1235;
+        let n : usize = 1235;
         let mut rng = rand::thread_rng();
         // std::generate(vec.begin(), vec.end(), [](){return std::rand() % 1000;});
-        let mut numbers = Vec::<usize>::with_capacity(n as usize);
-        for _ in 0..(n as usize) {
+        let mut numbers = Vec::<usize>::with_capacity(n);
+        for _ in 0..(n) {
             numbers.push(rng.gen::<usize>());
         }
         // // construct rmq
@@ -311,7 +313,6 @@ mod tests {
 
     #[test]
     fn test_rmq_multimin(){
-        let n = 1235;
         let mut rng = rand::thread_rng();
         // std::vector<size_t> vec(1000);
         // std::generate(vec.begin(), vec.end(), [](){return (8 + std::rand() % 10)/10;});
@@ -327,19 +328,32 @@ mod tests {
         // auto begin = vec.cbegin();
         // auto min_it = minquery.query(vec.cbegin(), vec.cend());
         let mut begin = 0;
-        let mut min_it = r.query(0, numbers.len());
+        let mut min_it = r.query(0, numbers.len()-1);
         // while (*min_it == 0) {
         while min_it < numbers.len() && numbers[min_it] == 0 {
             // if (min_it - begin > 0) {
             //     // assert the minimum of the range prior to the found min is larger
             //     auto min_it2 = minquery.query(begin, min_it);
-            //     EXPECT_LT(*min_it, *min_it2) << " min for range [" << (begin-vec.cbegin()) << ",end] at pos " << (min_it - vec.cbegin()) << ", but there is a previous min of same value at pos " << (min_it2 - vec.cbegin());
+            //     EXPECT_LT(*min_it, *min_it2) << " min for range [" << (begin-vec.cbegin()) << ",end] at pos "
+            //  << (min_it - vec.cbegin()) 
+            // << ", but there is a previous min of same value at pos " << (min_it2 - vec.cbegin());
             // }
+            if min_it - begin > 0 {
+                let min_it2 = r.query(begin, min_it - 1);
+                assert!(numbers[min_it] < numbers[min_it2],  
+                    " min for range [{}, end] at pos {}, but there is prev min of same val at pos {}  ",
+                     begin, min_it, min_it2);
+            }
             // // continue in remaining range:
             // begin = min_it+1;
+            begin = min_it+1;
             // if (begin == vec.cend())
             //     break;
+            if begin == numbers.len(){
+                break;
+            }
             // min_it = minquery.query(begin, vec.cend());
+            min_it = r.query(begin, numbers.len() - 1)
         // }
         }
         // //std::cout << min_it - vec.cbegin() << std::endl;
