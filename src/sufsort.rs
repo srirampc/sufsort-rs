@@ -62,13 +62,14 @@ impl<'s> SA<'s, i32> {
     /// #Example
     ///
     /// ```
-    /// let s = "MISSISSIPPI".to_string();
+    /// let txt = "MISSISSIPPI".to_string();
+    /// let s = txt.as_bytes();
     /// let say = sufsort_rs::sufsort::SA::<i32>::new(&s);
     /// assert_eq!(say.sarray, &[10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2]);
     /// ```
-    pub fn new(text: &'s String) -> Self {
+    pub fn new(src: &'s [u8]) -> Self {
         unsafe {
-            let src = text.as_bytes();
+            //let src = text.as_bytes();
             let mut dst : Vec<i32> = Vec::with_capacity(src.len() as usize);
             divsufsort(src.as_ptr(), dst.as_mut_ptr(), src.len() as i32);
             dst.set_len(src.len());
@@ -81,7 +82,8 @@ impl<'s> SA<'s, i32> {
     /// #Example
     ///
     /// ```
-    /// let s = "MISSISSIPPI".to_string();
+    /// let txt = "MISSISSIPPI".to_string();
+    /// let s = txt.as_bytes();
     /// let say = sufsort_rs::sufsort::SA::<i32>::new(&s);
     /// let sat: Vec<i32> = vec![10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2];
     /// assert_eq!(say.check_sa(false), true)
@@ -133,13 +135,13 @@ impl<'s> SA<'s, i64> {
     /// #Example
     ///
     /// ```
-    /// let s = "MISSISSIPPI".to_string();
+    /// let txt = "MISSISSIPPI".to_string();
+    /// let s = txt.as_bytes();
     /// let say = sufsort_rs::sufsort::SA::<i64>::new(&s);
     /// assert_eq!(say.sarray, &[10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2]);
     /// ```
-    pub fn new(text: &'s String) -> Self{
+    pub fn new(src: &'s [u8]) -> Self {
         unsafe {
-            let src = text.as_bytes();
             let mut dst : Vec<i64> = Vec::with_capacity(src.len() as usize);
             divsufsort64(src.as_ptr(), dst.as_mut_ptr(), src.len() as i64);
             dst.set_len(src.len());
@@ -223,21 +225,19 @@ pub struct BWT<'s, T>{
 }
 
 impl<'s> BWT<'s, i32> {
-        /// Construct bwt of the string src. Assumes that the BWT wraps around, i.e,
-        /// for the position i such that SA[i] is 0, BWT[i] is src[src.len() - 1].
-        /// Uses a temporary array of length |src| + 1.
-        ///
-        /// #Example
-        ///
-        ///
-        /// let src: Vec<u8> = vec![77, 73, 83, 83, 73, 83, 83, 73, 80, 80, 73];
-        /// let btx = sufsort_rs::construct_bwt(&src);
-        /// assert_eq!(btx, &[80, 83, 83, 77, 73, 80, 73, 83, 83, 73, 73]);
-        ///
-        pub fn new(text: &'s String) -> Self {
+    /// Construct bwt of the string src. Assumes that the BWT wraps around, i.e,
+    /// for the position i such that SA[i] is 0, BWT[i] is src[src.len() - 1].
+    /// Uses a temporary array of length |src| + 1.
+    ///
+    /// #Example
+    ///```
+    /// let src: Vec<u8> = vec![77, 73, 83, 83, 73, 83, 83, 73, 80, 80, 73];
+    /// let btx = sufsort_rs::sufsort::BWT::<i32>::new(&src);
+    /// assert_eq!(btx.bwt, &[80, 83, 83, 77, 73, 80, 73, 83, 83, 73, 73]);
+    ///```
+    pub fn new(src: &'s [u8]) -> Self {
         unsafe {
-            let mut dst: Vec<u8> = Vec::with_capacity(text.len());
-            let src = text.as_bytes();
+            let mut dst: Vec<u8> = Vec::with_capacity(src.len());
             let mut sax: Vec<i32> = Vec::with_capacity(src.len() + 1);
             let rv: i32 = divbwt(src.as_ptr(), dst.as_mut_ptr(),
                                     sax.as_mut_ptr(), src.len() as i32);
@@ -266,15 +266,15 @@ impl<'s> BWT<'s, i64> {
     ///
     /// #Example
     ///
-    ///
+    ///```
     /// let src: Vec<u8> = vec![77, 73, 83, 83, 73, 83, 83, 73, 80, 80, 73];
-    /// let btx = sufsort_rs::construct_bwt(&src);
-    /// assert_eq!(btx, &[80, 83, 83, 77, 73, 80, 73, 83, 83, 73, 73]);
-    ///
-    pub fn new(text: &'s String) -> Self{
-        let mut dst: Vec<u8> = Vec::with_capacity(text.len());
+    /// let btx = sufsort_rs::sufsort::BWT::<i64>::new(&src);
+    /// assert_eq!(btx.bwt, &[80, 83, 83, 77, 73, 80, 73, 83, 83, 73, 73]);
+    ///```
+    pub fn new(src: &'s [u8]) -> Self {
         unsafe{
-            let src = text.as_bytes();
+            // let src = text.as_bytes();
+            let mut dst: Vec<u8> = Vec::with_capacity(src.len());
             let mut tmp: Vec<i64> = Vec::with_capacity(src.len() + 1);
             let rv: i64 = divbwt64(src.as_ptr(), dst.as_mut_ptr(),
                                     tmp.as_mut_ptr(), src.len() as i64);

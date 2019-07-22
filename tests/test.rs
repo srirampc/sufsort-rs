@@ -12,7 +12,8 @@ mod tests {
 
     #[test]
     fn test_sufsort(){
-        let s = ("MISSISSIPPI").to_string();
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
         {
           let say = SA::<i32>::new(&s);
           assert_eq!(say.sarray, &[10, 7, 4, 1, 0, 9, 8, 6, 3, 5, 2]);
@@ -21,7 +22,8 @@ mod tests {
 
     #[test]
     fn test_bwt(){
-        let s = ("MISSISSIPPI").to_string();
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
         {
             let bwx = BWT::<i32>::new(&s);
             assert_eq!(bwx.bwt, "PSSMIPISSII".as_bytes());
@@ -30,15 +32,17 @@ mod tests {
 
     #[test]
     fn test_bwt_sa(){
-        let s = ("MISSISSIPPI").to_string();
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
         let mut say = SA::<i32>::new(&s);
-        let bwt2 = construct_bwt_sa(s.as_bytes(), &mut say.sarray);
+        let bwt2 = construct_bwt_sa(s, &mut say.sarray);
         assert_eq!(bwt2, "PSSMIPISSII".as_bytes());
     }
 
     #[test]
     fn test_search_sa(){
-        let s = ("MISSISSIPPI").to_string();
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
         let say = SA::<i32>::new(&s);
         let pat = ("ISS").to_string();
         let rst = say.search_sa(&pat.as_bytes());
