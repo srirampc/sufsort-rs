@@ -3,7 +3,7 @@ pub fn construct_lcp_kasai<T>(text: &[u8], sa: &Vec<T>,
                                 isa: &Vec<T>) -> Vec<T>
     where T: std::clone::Clone + std::marker::Copy +
                 std::ops::Add + std::ops::Sub<Output=T> +
-                std::cmp::PartialEq +
+                std::cmp::Ord +
                 num::ToPrimitive + num::One + num::Zero {
     let n = sa.len();
     assert!(n == text.len());
@@ -12,32 +12,22 @@ pub fn construct_lcp_kasai<T>(text: &[u8], sa: &Vec<T>,
     for i in 0..n {
         lcp.push(sa[i].clone());
     }
+
     let mut l : T = T::zero();
     for i in 0..n {
-        let sa_1 = match isa[i].to_usize() {
-            Some(x) => x,
-            None => 0,
-        };
+        let sa_1 = isa[i].to_usize().unwrap();
 
         if sa_1 != 0 {
             let mut jdx = sa_1 - 1;
-            let j : usize = match lcp[jdx].to_usize() {
-                    Some(x) => x,
-                    None => break,
-                };
+            let j : usize = lcp[jdx].to_usize().unwrap();
             if l != T::zero() {
                 l = l - T::one();
             }
-            let mut ldx = match l.to_usize() {
-                    Some(x) => x,
-                    None => break,
-                };;
-            while text[i+ldx] == text[j+ldx] {
+            let mut ldx = l.to_usize().unwrap();
+            while std::cmp::max(i+ldx, j+ldx) < text.len() &&
+                 text[i+ldx] == text[j+ldx] {
                 l = l + T::one();
-                ldx = match l.to_usize()  {
-                    Some(x) => x,
-                    None => break,
-                };
+                ldx = l.to_usize().unwrap();
             }
             jdx = sa_1 - 1;
             lcp[jdx] = l;
@@ -47,8 +37,8 @@ pub fn construct_lcp_kasai<T>(text: &[u8], sa: &Vec<T>,
         }
     }
 
-    for i in (n-1)..2 {
-        lcp[i-1] = lcp[i-2];
+    for i in (1..n).rev() {
+        lcp[i] = lcp[i-1];
     }
 
     lcp[0] = T::zero();
@@ -58,7 +48,7 @@ pub fn construct_lcp_kasai<T>(text: &[u8], sa: &Vec<T>,
 pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
     where T: std::clone::Clone + std::marker::Copy +
                 std::ops::Add + std::ops::Sub<Output=T> +
-                std::cmp::PartialEq +
+                std::cmp::Ord +
                 num::ToPrimitive + num::One + num::Zero {
     let n = sa.len();
     assert!(n == text.len());
@@ -67,10 +57,7 @@ pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
     let mut sai_1 : T = T::zero();
     // (1) Calculate PHI
     for i in 0..n {
-        let sai = match sa[i].to_usize(){
-            Some(x) => x,
-            None => continue,
-        };
+        let sai = sa[i].to_usize().unwrap();
         plcp[sai] = sai_1;
         sai_1 = sa[i].clone();
     }
@@ -79,20 +66,13 @@ pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
     let mut max_size : usize = 0;
     let mut l : T = T::zero();
     for i in 0..n-1 {
-        let phii = match plcp[i].to_usize() {
-            Some(x) => x,
-            None => continue,
-        };
-        let mut ldx = match l.to_usize(){
-            Some(x) => x,
-            None => continue,
-        };
-        while text[i+ldx] == text[phii+ldx]{
+        let phii =  plcp[i].to_usize().unwrap();
+        let mut ldx =  l.to_usize().unwrap();
+
+        while std::cmp::max(i+ldx, phii+ldx) < text.len() &&
+                text[i+ldx] == text[phii+ldx] {
             l = l + T::one();
-            ldx = match l.to_usize(){
-                Some(x) => x,
-                None => continue,
-            };
+            ldx =  l.to_usize().unwrap();
         }
         plcp[i] = T::zero() + l;
         if l != T::zero() {
@@ -101,10 +81,7 @@ pub fn construct_lcp_phi<T>(text: &[u8], sa: &Vec<T>) -> Vec<T>
         }
     }
     for i in 0..n {
-        let sai = match sa[i].to_usize(){
-            Some(x) => x,
-            None => continue,
-        };
+        let sai = sa[i].to_usize().unwrap();
         lcp[i] = plcp[sai];
     }
     lcp
@@ -125,7 +102,7 @@ pub fn construct_lcp_from_sa<T>(text: &[u8], sa: &Vec<T>, isa: &Vec<T>) -> Vec<T
 
     // // in string order!
     // for (std::size_t i = 0; i < S.size(); ++i) {
-    for i in 0..n-1 {
+    for i in 0..n {
         // length of currently equal characters (in string order, next LCP value
         // is always >= current lcp - 1)
         // std::size_t k = 0;

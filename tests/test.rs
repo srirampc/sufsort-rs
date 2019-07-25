@@ -49,6 +49,93 @@ mod tests {
         assert_eq!(rst, (2, 2));
     }
 
+
+    #[test]
+    fn test_sufsort_lcp_from_isa(){
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
+        let mut mx_match: Vec<i32> = vec![0; txt.len()];
+        let say = SA::<i32>::new(&s);
+        let isay = ss::sufsort::construct_isa(&say.sarray);
+        let ilcp = ss::lcp::construct_lcp_from_sa(&s, &say.sarray, &isay);
+
+
+        for i in 1..say.sarray.len(){
+            let sai = say.sarray[i] as usize;
+            let sap = say.sarray[i-1] as usize;
+            let mut k: usize = 0;
+            while std::cmp::max(sai+k, sap+k) < s.len() {
+                if s[sai+k] != s[sap+k]{
+                    break;
+                }
+                k += 1;
+            }
+            mx_match[i] = k as i32;
+        }
+        assert_eq!(ilcp, mx_match);
+    }
+
+    #[test]
+    fn test_sufsort_lcp_phi(){
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
+        let mut mx_match: Vec<i32> = vec![0; txt.len()];
+        let say = SA::<i32>::new(&s);
+        let ilcp = ss::lcp::construct_lcp_phi(&s, &say.sarray);
+
+
+        for i in 1..say.sarray.len(){
+            let sai = say.sarray[i] as usize;
+            let sap = say.sarray[i-1] as usize;
+            let mut k: usize = 0;
+            while std::cmp::max(sai+k, sap+k) < s.len() {
+                if s[sai+k] != s[sap+k]{
+                    break;
+                }
+                k += 1;
+            }
+            mx_match[i] = k as i32;
+        }
+        assert_eq!(ilcp, mx_match);
+    }
+
+    #[test]
+    fn test_sufsort_lcp_kasai(){
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
+        let mut mx_match: Vec<i32> = vec![0; txt.len()];
+        let say = SA::<i32>::new(&s);
+        let isay = ss::sufsort::construct_isa(&say.sarray);
+        let ilcp = ss::lcp::construct_lcp_kasai(&s, &say.sarray, &isay);
+
+
+        for i in 1..say.sarray.len(){
+            let sai = say.sarray[i] as usize;
+            let sap = say.sarray[i-1] as usize;
+            let mut k: usize = 0;
+            while std::cmp::max(sai+k, sap+k) < s.len() {
+                if s[sai+k] != s[sap+k]{
+                    break;
+                }
+                k += 1;
+            }
+            mx_match[i] = k as i32;
+        }
+        assert_eq!(ilcp, mx_match);
+    }
+
+    #[test]
+    fn test_sufsort_lcp_from_isa_nsquare(){
+        let txt = ("MISSISSIPPI").to_string();
+        let s = txt.as_bytes();
+        {
+          let say = SA::<i32>::new(&s);
+          let isay = ss::sufsort::construct_isa(&say.sarray);
+          assert_eq!(isay, &[ 4, 3,10, 8, 2, 9, 7, 1, 6, 5, 0]);
+        }
+    }
+
+
     pub struct RmqTester<'s, ST, IT> where 
         ST: std::marker::Copy + std::cmp::Ord + std::fmt::Debug,
         IT: std::marker::Copy + num::Integer + num::Unsigned +
